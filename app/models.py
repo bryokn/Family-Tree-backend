@@ -13,6 +13,12 @@ class People(db.Model):
     photo = db.Column(db.String(255), nullable=True)
     biography = db.Column(db.Text, nullable=True)
 
+    # Updated relationships
+    parent_relationships = db.relationship('ParentChild', foreign_keys='ParentChild.child_id', backref='child')
+    child_relationships = db.relationship('ParentChild', 
+                                          primaryjoin="or_(People.id==ParentChild.parent1_id, People.id==ParentChild.parent2_id)",
+                                          backref='parents')
+
     def __repr__(self):
         return f"<People(id={self.id}, first_name='{self.first_name}', last_name='{self.last_name}')>"
 
@@ -27,6 +33,27 @@ class People(db.Model):
             'photo': self.photo,
             'biography': self.biography
         }
+        
+class ParentChild(db.Model):
+    __tablename__ = 'parent_child'
+    id = db.Column(db.Integer, primary_key=True)
+    parent1_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=False)
+    parent2_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=True)  # Allow for single parent families
+    child_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=False)
+
+    parent1 = db.relationship('People', foreign_keys=[parent1_id])
+    parent2 = db.relationship('People', foreign_keys=[parent2_id])
+
+    def __repr__(self):
+        return f"<ParentChild(parent1_id={self.parent1_id}, parent2_id={self.parent2_id}, child_id={self.child_id})>"
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'parent1_id': self.parent1_id,
+            'parent2_id': self.parent2_id,
+            'child_id': self.child_id
+        }
 
 class Relationship(db.Model):
     __tablename__ = 'relationships'
@@ -35,11 +62,8 @@ class Relationship(db.Model):
     person2_id = db.Column(db.Integer, db.ForeignKey('people.id'), nullable=False)
     relationship_type = db.Column(db.String(50), nullable=False)
 
-    person1 = db.relationship('People', foreign_keys=[person1_id])
-    person2 = db.relationship('People', foreign_keys=[person2_id])
-
     def __repr__(self):
-        return f"<Relationship(id={self.id}, person1_id={self.person1_id}, person2_id={self.person2_id}, relationship_type='{self.relationship_type}')>"
+        return f"<Relationship(person1_id={self.person1_id}, person2_id={self.person2_id}, type='{self.relationship_type}')>"
 
     def serialize(self):
         return {
